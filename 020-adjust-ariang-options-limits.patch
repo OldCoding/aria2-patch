@@ -1,0 +1,31 @@
+diff --git a/src/scripts/config/aria2Options.js b/src/scripts/config/aria2Options.js
+index d19fe2e..4bceb87 100644
+--- a/src/scripts/config/aria2Options.js
++++ b/src/scripts/config/aria2Options.js
+@@ -86,7 +86,7 @@
+             defaultValue: '1',
+             required: true,
+             min: 1,
+-            max: 16
++            max: 1024
+         },
+         'max-file-not-found': {
+             type: 'integer',
+@@ -105,7 +105,7 @@
+             suffix: 'Bytes',
+             defaultValue: '20M',
+             required: true,
+-            pattern: '^(0|[1-9]\\d*(K|k|M|m)?)$'
++            pattern: '^(0|[1-9]\\d*(K|k|M|m|G|g)?)$'
+         },
+         'netrc-path': {
+             type: 'string',
+@@ -759,7 +759,7 @@
+             suffix: 'Bytes',
+             defaultValue: '1M',
+             required: true,
+-            pattern: '^(0|[1-9]\\d*(M|m)?)$'
++            pattern: '^(0|[1-9]\\d*(K|k|M|m)?)$'
+         },
+         'show-console-readout': {
+             type: 'boolean',
