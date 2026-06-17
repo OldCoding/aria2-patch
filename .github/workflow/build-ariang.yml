@@ -1,0 +1,103 @@
+name: Build and Release AriaNg with Patches
+
+on:
+  workflow_dispatch: # 支持在 Actions 页面手动触发
+  watch:
+    types: [started] # 当有人点击仓库的 Star 时触发
+  push:
+    paths:
+      - '020-adjust-ariang-options-limits.patch' # 当补丁更新时自动触发
+
+jobs:
+  build:
+    # 只有当触发者是你自己（或者为了防止别人恶意狂点 Star 消耗你的 Actions 额度），可以加一条权限判断
+    # 如果你想让任何人的 Star 都能触发，可以把下面这行 if 删掉
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. 检出你自己的仓库（获取 Makefile 和 020 补丁）
+    - name: Checkout own repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # 2. 检出官方 AriaNg 源码仓库
+    - name: Checkout AriaNg Source
+      uses: actions/checkout@v4
+      with:
+        repository: 'mayswind/AriaNg'
+        path: 'AriaNg-src'
+
+    # 3. 设置 Node.js 环境（使用 Node 16 确保 gulp 兼容性）
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '16'
+        cache: 'npm'
+        cache-dependency-path: 'AriaNg-src/package.json'
+
+    # 4. 全局安装 Gulp CLI
+    - name: Install Gulp CLI
+      run: npm install --global gulp-cli
+
+    # 5. 读取 package.json 中的版本号并设为环境变量
+    - name: Read AriaNg Version
+      id: get_version
+      run: |
+        VERSION=$(node -e "console.log(require('./AriaNg-src/package.json').version)")
+        echo "ARIANG_VERSION=$VERSION" >> $GITHUB_ENV
+        echo "AriaNg Version is $VERSION"
+
+    # 6. 把你仓库根目录的 020 补丁应用到 AriaNg 源码中
+    - name: Apply Patch to AriaNg
+      run: |
+        cd AriaNg-src
+        git apply ../020-adjust-ariang-options-limits.patch
+        echo "Patch applied successfully."
+
+    # 7. 根据官方说明进行前端编译
+    - name: Build AriaNg Web Frontend
+      run: |
+        cd AriaNg-src
+        npm install
+        gulp clean build
+
+    # 8. 将编译生产出的 dist 目录打包为标准的 zip 压缩包
+    - name: Compress Build Artifacts
+      run: |
+        cd AriaNg-src/dist
+        zip -r ../../ariang-${{ env.ARIANG_VERSION }}.zip ./*
+        cd ../..
+        PKG_HASH=$(sha256sum ariang-${{ env.ARIANG_VERSION }}.zip | awk '{print $1}')
+        echo "PKG_HASH=$PKG_HASH" >> $GITHUB_ENV
+
+    # 9. 动态修改你仓库根目录下的 Makefile 版本号和 Hash
+    - name: Update Makefile Version and Hash
+      run: |
+        sed -i 's/PKG_VERSION:=.*/PKG_VERSION:='"${{ env.ARIANG_VERSION }}"'/g' Makefile
+        sed -i 's/PKG_HASH:=.*/PKG_HASH:='"${{ env.PKG_HASH }}"'/g' Makefile
+        echo "Makefile updated with version ${{ env.ARIANG_VERSION }} and hash ${{ env.PKG_HASH }}"
+
+    # 10. 将修改后的 Makefile 自动提交回你的代码仓库
+    - name: Commit and Push Makefile Changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add Makefile
+        git diff --cached --exit-code && echo "No changes to Makefile" || git commit -m "Automated update Makefile to v${{ env.ARIANG_VERSION }}"
+        git push origin main
+
+    # 11. 将编译好的 zip 包上传并发布到 GitHub Releases
+    - name: Create GitHub Release and Upload Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ env.ARIANG_VERSION }}
+        name: AriaNg v${{ env.ARIANG_VERSION }} Patched
+        body: |
+          Automated build of AriaNg v${{ env.ARIANG_VERSION }} with connection and split-size patches.
+          
+          SHA256 Checksum: `${{ env.PKG_HASH }}`
+        draft: false
+        prerelease: false
+        files: ariang-${{ env.ARIANG_VERSION }}.zip
