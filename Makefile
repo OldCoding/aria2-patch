@@ -50,10 +50,6 @@ define Package/ariang/install
 	$(INSTALL_DIR) \
 		$(1)/www/ariang
 
-	sed -i 's/key:"max-connection-per-server",[^}]*min:1,max:16/key:"max-connection-per-server",category:"global",defaultValue:"1",required:!0,min:1,max:1024/g' $(PKG_BUILD_DIR)/js/aria-ng-*.js
-	sed -i 's/pattern:"^(0|\[1-9\]\\\\d\*(K|k|M|m)?)$"/pattern:"^(0|\[1-9\]\\\\d\*(K|k|M|m|G|g)?)$"/g' $(PKG_BUILD_DIR)/js/aria-ng-*.js
-	sed -i 's/pattern:"^(0|\[1-9\]\\\\d\*M?)$"/pattern:"^(0|\[1-9\]\\\\d\*(K|k|M|m)?)$"/g' $(PKG_BUILD_DIR)/js/aria-ng-*.js
-
 	$(CP) \
 		$(PKG_BUILD_DIR)/{langs,css,js,fonts} \
 		$(PKG_BUILD_DIR)/index.html \
