@@ -6,12 +6,11 @@ on:
     types: [started] # 当有人点击仓库的 Star 时触发
   push:
     paths:
-      - '020-adjust-ariang-options-limits.patch' # 当补丁更新时自动触发
+      - '020-adjust-ariang-options-limits.patch' # 当补丁更新时也自动触发
 
 jobs:
   build:
-    # 只有当触发者是你自己（或者为了防止别人恶意狂点 Star 消耗你的 Actions 额度），可以加一条权限判断
-    # 如果你想让任何人的 Star 都能触发，可以把下面这行 if 删掉
+    # 只有当触发者是你自己时才执行，防止他人恶意刷额度
     if: github.actor == github.repository_owner
     runs-on: ubuntu-latest
 
@@ -22,35 +21,56 @@ jobs:
       with:
         fetch-depth: 0
 
-    # 2. 检出官方 AriaNg 源码仓库
+    # 2. 检出官方 AriaNg 源码仓库（用于读取最新版本号和后续编译）
     - name: Checkout AriaNg Source
       uses: actions/checkout@v4
       with:
         repository: 'mayswind/AriaNg'
         path: 'AriaNg-src'
 
-    # 3. 设置 Node.js 环境（使用 Node 16 确保 gulp 兼容性）
+    # 3. 读取版本号并进行前置对比检查（放到安装环境之前）
+    - name: Check and Compare Version
+      id: check_version
+      run: |
+        # 从 package.json 中提取官方最新版本号
+        ARIANG_VERSION=$(node -e "console.log(require('./AriaNg-src/package.json').version)")
+        echo "ARIANG_VERSION=$ARIANG_VERSION" >> $GITHUB_ENV
+        echo "Official AriaNg Version: $ARIANG_VERSION"
+        
+        # 从你本地的 Makefile 中提取当前的 PKG_VERSION
+        CURRENT_MAKEFILE_VERSION=$(grep -oP 'PKG_VERSION:=\K.*' Makefile | tr -d ' \r\n')
+        echo "Current Makefile Version: $CURRENT_MAKEFILE_VERSION"
+        
+        # 判断版本号是否一致
+        if [ "$ARIANG_VERSION" = "$CURRENT_MAKEFILE_VERSION" ]; then
+          echo "========================================================="
+          echo "🎉 版本号一致 ($ARIANG_VERSION)，无需更新！跳过后续所有编译和发布操作。"
+          echo "========================================================="
+          echo "skip=true" >> $GITHUB_OUTPUT
+        else
+          echo "========================================================="
+          echo "🚀 检测到新版本！将从 $CURRENT_MAKEFILE_VERSION 更新至 $ARIANG_VERSION。"
+          echo "========================================================="
+          echo "skip=false" >> $GITHUB_OUTPUT
+        fi
+
+    # 4. 设置 Node.js 环境（如果版本一致，此步及后续步骤会被安全跳过）
     - name: Setup Node.js
+      if: steps.check_version.outputs.skip != 'true'
       uses: actions/setup-node@v4
       with:
         node-version: '16'
         cache: 'npm'
         cache-dependency-path: 'AriaNg-src/package.json'
 
-    # 4. 全局安装 Gulp CLI
+    # 5. 全局安装 Gulp CLI
     - name: Install Gulp CLI
+      if: steps.check_version.outputs.skip != 'true'
       run: npm install --global gulp-cli
-
-    # 5. 读取 package.json 中的版本号并设为环境变量
-    - name: Read AriaNg Version
-      id: get_version
-      run: |
-        VERSION=$(node -e "console.log(require('./AriaNg-src/package.json').version)")
-        echo "ARIANG_VERSION=$VERSION" >> $GITHUB_ENV
-        echo "AriaNg Version is $VERSION"
 
     # 6. 把你仓库根目录的 020 补丁应用到 AriaNg 源码中
     - name: Apply Patch to AriaNg
+      if: steps.check_version.outputs.skip != 'true'
       run: |
         cd AriaNg-src
         git apply ../020-adjust-ariang-options-limits.patch
@@ -58,13 +78,15 @@ jobs:
 
     # 7. 根据官方说明进行前端编译
     - name: Build AriaNg Web Frontend
+      if: steps.check_version.outputs.skip != 'true'
       run: |
         cd AriaNg-src
         npm install
         gulp clean build
 
-    # 8. 将编译生产出的 dist 目录打包为标准的 zip 压缩包
+    # 8. 将编译生产出的 dist 目录打包为标准的 zip 压缩包并计算 Hash
     - name: Compress Build Artifacts
+      if: steps.check_version.outputs.skip != 'true'
       run: |
         cd AriaNg-src/dist
         zip -r ../../ariang-${{ env.ARIANG_VERSION }}.zip ./*
@@ -74,6 +96,7 @@ jobs:
 
     # 9. 动态修改你仓库根目录下的 Makefile 版本号和 Hash
     - name: Update Makefile Version and Hash
+      if: steps.check_version.outputs.skip != 'true'
       run: |
         sed -i 's/PKG_VERSION:=.*/PKG_VERSION:='"${{ env.ARIANG_VERSION }}"'/g' Makefile
         sed -i 's/PKG_HASH:=.*/PKG_HASH:='"${{ env.PKG_HASH }}"'/g' Makefile
@@ -81,6 +104,7 @@ jobs:
 
     # 10. 将修改后的 Makefile 自动提交回你的代码仓库
     - name: Commit and Push Makefile Changes
+      if: steps.check_version.outputs.skip != 'true'
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
@@ -90,6 +114,7 @@ jobs:
 
     # 11. 将编译好的 zip 包上传并发布到 GitHub Releases
     - name: Create GitHub Release and Upload Asset
+      if: steps.check_version.outputs.skip != 'true'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ env.ARIANG_VERSION }}
