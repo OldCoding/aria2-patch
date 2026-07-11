@@ -1,6 +1,8 @@
---- a/src/OptionHandlerFactory.cc	2017-08-04 12:58:02.375182532 +0800
-+++ b/src/OptionHandlerFactory.cc	2017-08-04 12:58:41.101848011 +0800
-@@ -438,7 +438,7 @@ std::vector<OptionHandler*> OptionHandle
+diff --git a/src/OptionHandlerFactory.cc b/src/OptionHandlerFactory.cc
+index 000426b..e1a3605 100644
+--- a/src/OptionHandlerFactory.cc
++++ b/src/OptionHandlerFactory.cc
+@@ -438,7 +438,7 @@ std::vector<OptionHandler*> OptionHandlerFactory::createOptionHandlers()
    {
      OptionHandler* op(new NumberOptionHandler(PREF_MAX_CONNECTION_PER_SERVER,
                                                TEXT_MAX_CONNECTION_PER_SERVER,
@@ -9,21 +11,30 @@
      op->addTag(TAG_BASIC);
      op->addTag(TAG_FTP);
      op->addTag(TAG_HTTP);
-@@ -499,7 +499,7 @@ std::vector<OptionHandler*> OptionHandle
+@@ -499,7 +499,7 @@ std::vector<OptionHandler*> OptionHandlerFactory::createOptionHandlers()
    }
    {
      OptionHandler* op(new UnitNumberOptionHandler(
 -        PREF_MIN_SPLIT_SIZE, TEXT_MIN_SPLIT_SIZE, "20M", 1_m, 1_g, 'k'));
-+        PREF_MIN_SPLIT_SIZE, TEXT_MIN_SPLIT_SIZE, "20M", 64_k, 1_g, 'k'));
++        PREF_MIN_SPLIT_SIZE, TEXT_MIN_SPLIT_SIZE, "20M", 16_k, 1_g, 'k'));
      op->addTag(TAG_BASIC);
      op->addTag(TAG_FTP);
      op->addTag(TAG_HTTP);
-@@ -903,7 +903,7 @@ std::vector<OptionHandler*> OptionHandle
+@@ -903,7 +903,7 @@ std::vector<OptionHandler*> OptionHandlerFactory::createOptionHandlers()
    }
    {
      OptionHandler* op(new UnitNumberOptionHandler(
 -        PREF_PIECE_LENGTH, TEXT_PIECE_LENGTH, "1M", 1_m, 1_g));
-+        PREF_PIECE_LENGTH, TEXT_PIECE_LENGTH, "1M", 64_k, 1_g));
++        PREF_PIECE_LENGTH, TEXT_PIECE_LENGTH, "1M", 16_k, 1_g));
      op->addTag(TAG_ADVANCED);
+     op->addTag(TAG_FTP);
+     op->addTag(TAG_HTTP);
+@@ -969,7 +969,7 @@ std::vector<OptionHandler*> OptionHandlerFactory::createOptionHandlers()
+   }
+   {
+     OptionHandler* op(
+-        new NumberOptionHandler(PREF_SPLIT, TEXT_SPLIT, "5", 1, -1, 's'));
++        new NumberOptionHandler(PREF_SPLIT, TEXT_SPLIT, "1024", 1, -1, 's'));
+     op->addTag(TAG_BASIC);
      op->addTag(TAG_FTP);
      op->addTag(TAG_HTTP);
