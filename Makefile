@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ariang
-PKG_VERSION:=1.3.14
+PKG_VERSION:=1.3.15
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).zip
 PKG_SOURCE_URL:=https://github.com/OldCoding/aria2-patch/releases/download/$(PKG_VERSION)
-PKG_HASH:=946b631a55e95aac79e5d5db08a1a0d7336aa6e045970c76e1cf5e5984dd0bc5
+PKG_HASH:=c306bfe3a79370305c0336d3c8b7b00c6a81e351b3134422a9f0df25c96934be
 UNPACK_CMD=unzip -q -d $(1) $(DL_DIR)/$(PKG_SOURCE)
 
 PKG_MAINTAINER:=Ansuel Smith <ansuelsmth@gmail.com>
